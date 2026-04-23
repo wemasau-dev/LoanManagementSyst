@@ -177,109 +177,110 @@
     </div>
     
     <script>
-        // Configuration
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxW0t491SQGmhnK0d169xgRmCLgV1dZPd7w12fMsRIUHZ8pwBkAdoFOJJnMMgojIZID/exec';
-        
-        class LoanPortal {
-            constructor(apiUrl) {
-                this.apiUrl = apiUrl;
-            }
-            
-            async createLoan(amount, startDate) {
-                const response = await fetch(this.apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'createLoan',
-                        amount: parseFloat(amount),
-                        startDate: startDate,
-                        rate: this.calculateRate(amount),
-                        totalPayable: this.calculateTotalPayable(amount)
-                    })
-                });
-                return await response.json();
-            }
-            
-            calculateRate(amount) {
-                if (amount <= 151000) return 0.0020;
-                if (amount <= 251000) return 0.0021;
-                if (amount <= 401000) return 0.0022;
-                if (amount <= 601000) return 0.0023;
-                if (amount <= 801000) return 0.0024;
-                if (amount <= 1001000) return 0.0025;
-                if (amount <= 1501000) return 0.0026;
-                if (amount <= 2001000) return 0.0027;
-                if (amount <= 2501000) return 0.0028;
-                return 0.0029;
-            }
-            
-            calculateTotalPayable(amount) {
-                const rate = this.calculateRate(amount);
-                return amount + (amount * rate);
-            }
-            
-            async makePayment(loanId, amount, paymentDate) {
-                const response = await fetch(this.apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'makePayment',
-                        loanId: loanId,
-                        amount: parseFloat(amount),
-                        paymentDate: paymentDate
-                    })
-                });
-                return await response.json();
-            }
-            
-            async getLoans() {
-                const response = await fetch(`${this.apiUrl}?action=getLoans`);
-                return await response.json();
-            }
-            
-            async getLoan(loanId) {
-                const response = await fetch(`${this.apiUrl}?action=getLoan&id=${loanId}`);
-                return await response.json();
-            }
+<script>
+    // ============ YOUR GOOGLE SCRIPT URL ============
+    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxW0t491SQGmhnK0d169xgRmCLgV1dZPd7w12fMsRIUHZ8pwBkAdoFOJJnMMgojIZID/exec';
+    
+    // ============ LOAN PORTAL CLASS ============
+    class LoanPortal {
+        constructor(apiUrl) {
+            this.apiUrl = apiUrl;
+            console.log('Loan portal initialized');
         }
         
-        const portal = new LoanPortal(GOOGLE_SCRIPT_URL);
-        
-        async function createLoan() {
-            const amount = document.getElementById('loanAmount').value;
-            const startDate = document.getElementById('startDate').value;
-            
-            if (!amount || amount > 3000000) {
-                showAlert('Please enter a valid amount (max 3,000,000)', 'error');
-                return;
-            }
-            
-            try {
-                const result = await portal.createLoan(amount, startDate);
-                showAlert('Loan created successfully!', 'success');
-                refreshLoans();
-            } catch (error) {
-                showAlert('Error creating loan: ' + error.message, 'error');
-            }
+        async getLoans() {
+            const response = await fetch(`${this.apiUrl}?action=getLoans`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
         }
         
-        async function refreshLoans() {
-            try {
-                const loans = await portal.getLoans();
-                displayLoans(loans);
-            } catch (error) {
-                showAlert('Error loading loans: ' + error.message, 'error');
-            }
+        async getLoan(loanId) {
+            const response = await fetch(`${this.apiUrl}?action=getLoan&id=${loanId}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
         }
         
-        function displayLoans(loans) {
+        async createLoan(amount, startDate) {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'createLoan',
+                    amount: parseFloat(amount),
+                    startDate: startDate
+                })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        }
+        
+        async makePayment(loanId, amount, paymentDate) {
+            const response = await fetch(this.apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'makePayment',
+                    loanId: loanId,
+                    amount: parseFloat(amount),
+                    paymentDate: paymentDate
+                })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        }
+    }
+    
+    // Initialize portal
+    const portal = new LoanPortal(GOOGLE_SCRIPT_URL);
+    
+    // Test connection function
+    async function testConnection() {
+        try {
+            console.log('Testing connection to:', GOOGLE_SCRIPT_URL);
+            const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=getLoans`);
+            console.log('Response status:', response.status);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Connection successful!', data);
+                showAlert('✅ Connected to Google Sheets successfully!', 'success');
+            } else {
+                console.error('Connection failed:', response.status);
+                showAlert(`❌ Connection failed: ${response.status}. Check CORS and deployment settings.`, 'error');
+            }
+        } catch (error) {
+            console.error('Connection error:', error);
+            showAlert(`❌ Error: ${error.message}`, 'error');
+        }
+    }
+    
+    // UI Functions
+    async function createLoan() {
+        const amount = document.getElementById('loanAmount').value;
+        const startDate = document.getElementById('startDate').value;
+        
+        if (!amount || amount > 3000000) {
+            showAlert('Please enter a valid amount (max 3,000,000)', 'error');
+            return;
+        }
+        
+        try {
+            const result = await portal.createLoan(amount, startDate);
+            showAlert('✅ Loan created! ID: ' + result.loanId, 'success');
+            document.getElementById('loanAmount').value = '';
+            await refreshLoans();
+        } catch (error) {
+            showAlert('❌ Error: ' + error.message, 'error');
+        }
+    }
+    
+    async function refreshLoans() {
+        try {
+            const loans = await portal.getLoans();
             const container = document.getElementById('loansList');
+            
             if (!loans || loans.length === 0) {
-                container.innerHTML = '<p>No loans found. Apply for your first loan!</p>';
+                container.innerHTML = '<p>No loans found.</p>';
                 return;
             }
             
@@ -287,98 +288,58 @@
                 <div class="loan-card" onclick="viewLoan('${loan.id}')">
                     <strong>Loan #${loan.id}</strong><br>
                     Amount: $${parseFloat(loan.amount).toLocaleString()}<br>
-                    Total Payable: $${parseFloat(loan.totalPayable).toLocaleString()}<br>
-                    Status: <span class="status-${loan.status}">${loan.status}</span><br>
-                    Started: ${new Date(loan.startDate).toLocaleDateString()}
+                    Status: <span class="status-${loan.status}">${loan.status}</span>
                 </div>
             `).join('');
+        } catch (error) {
+            showAlert('❌ Error loading loans: ' + error.message, 'error');
         }
-        
-        async function viewLoan(loanId) {
-            try {
-                const loan = await portal.getLoan(loanId);
-                displayLoanDetails(loan);
-            } catch (error) {
-                showAlert('Error loading loan details: ' + error.message, 'error');
-            }
-        }
-        
-        function displayLoanDetails(loan) {
+    }
+    
+    async function viewLoan(loanId) {
+        try {
+            const loan = await portal.getLoan(loanId);
             const container = document.getElementById('loanDetails');
-            const unpaidInstalments = loan.instalments.filter(i => i.status !== 'paid');
-            const nextPayment = unpaidInstalments[0];
             
             container.innerHTML = `
-                <div class="loan-summary">
-                    <h3>Loan #${loan.id}</h3>
-                    <p><strong>Principal:</strong> $${parseFloat(loan.amount).toLocaleString()}</p>
-                    <p><strong>Interest Rate:</strong> ${(loan.rate * 100).toFixed(1)}%</p>
-                    <p><strong>Total Payable:</strong> $${parseFloat(loan.totalPayable).toLocaleString()}</p>
-                    <p><strong>Status:</strong> <span class="status-${loan.status}">${loan.status}</span></p>
-                    
-                    <h4>Instalments</h4>
-                    <table class="instalments-table">
-                        <thead>
-                            <tr><th>#</th><th>Due Date</th><th>Amount</th><th>Status</th><th>Paid Amount</th></tr>
-                        </thead>
-                        <tbody>
-                            ${loan.instalments.map(inst => `
-                                <tr class="${inst.status}">
-                                    <td>${inst.number}</td>
-                                    <td>${new Date(inst.dueDate).toLocaleDateString()}</td>
-                                    <td>$${inst.amount.toLocaleString()}</td>
-                                    <td>${inst.status}</td>
-                                    <td>$${inst.paidAmount.toLocaleString()}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    
-                    ${nextPayment ? `
-                        <div class="payment-form">
-                            <h4>Make a Payment</h4>
-                            <div class="form-group">
-                                <label>Next Payment Due: $${nextPayment.amount.toLocaleString()}</label>
-                                <label>Payment Amount ($)</label>
-                                <input type="number" id="paymentAmount" value="${nextPayment.amount}">
-                            </div>
-                            <div class="form-group">
-                                <label>Payment Date</label>
-                                <input type="date" id="paymentDate" value="${new Date().toISOString().split('T')[0]}">
-                            </div>
-                            <button onclick="makePayment('${loan.id}')">Submit Payment</button>
-                        </div>
-                    ` : '<div class="alert alert-success">Loan fully paid! 🎉</div>'}
-                </div>
+                <h3>Loan #${loan.id}</h3>
+                <p>Amount: $${parseFloat(loan.amount).toLocaleString()}</p>
+                <p>Total Payable: $${parseFloat(loan.totalPayable).toLocaleString()}</p>
+                <p>Status: ${loan.status}</p>
+                <button onclick="makePayment('${loan.id}')">Make Payment</button>
             `;
+        } catch (error) {
+            showAlert('❌ Error: ' + error.message, 'error');
         }
+    }
+    
+    async function makePayment(loanId) {
+        const amount = prompt('Enter payment amount:');
+        if (!amount) return;
         
-        async function makePayment(loanId) {
-            const amount = document.getElementById('paymentAmount').value;
-            const paymentDate = document.getElementById('paymentDate').value;
-            
-            try {
-                const result = await portal.makePayment(loanId, amount, paymentDate);
-                showAlert('Payment processed successfully!', 'success');
-                viewLoan(loanId);
-                refreshLoans();
-            } catch (error) {
-                showAlert('Error processing payment: ' + error.message, 'error');
-            }
+        try {
+            const result = await portal.makePayment(loanId, amount, new Date().toISOString());
+            showAlert('✅ Payment successful!', 'success');
+            await refreshLoans();
+            await viewLoan(loanId);
+        } catch (error) {
+            showAlert('❌ Error: ' + error.message, 'error');
         }
-        
-        function showAlert(message, type) {
-            const alertDiv = document.getElementById('alert');
-            alertDiv.className = `alert alert-${type}`;
-            alertDiv.innerHTML = message;
-            alertDiv.style.display = 'block';
-            setTimeout(() => {
-                alertDiv.style.display = 'none';
-            }, 5000);
-        }
-        
-        // Initialize
+    }
+    
+    function showAlert(message, type) {
+        const alertDiv = document.getElementById('alert');
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.innerHTML = message;
+        alertDiv.style.display = 'block';
+        setTimeout(() => {
+            alertDiv.style.display = 'none';
+        }, 5000);
+    }
+    
+    // Initialize on page load
+    window.addEventListener('load', () => {
+        testConnection();
         refreshLoans();
-    </script>
-</body>
-</html>
+    });
+</script>

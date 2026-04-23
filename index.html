@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Management Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background: #5a67d8;
+        }
+        
+        .loan-card {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .loan-card:hover {
+            transform: translateX(5px);
+        }
+        
+        .status-active {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        
+        .status-completed {
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        .instalments-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .instalments-table th,
+        .instalments-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .instalments-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .instalments-table tr.paid {
+            background: #d4edda;
+        }
+        
+        .payment-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        
+        .alert {
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Loan Management Portal</h1>
+            <p>Apply for loans and manage your payments</p>
+        </div>
+        
+        <div class="content">
+            <div id="alert" style="display:none;"></div>
+            
+            <div class="form-group">
+                <label>Loan Amount ($)</label>
+                <input type="number" id="loanAmount" placeholder="Enter amount (max 3,000,000)">
+            </div>
+            
+            <div class="form-group">
+                <label>Start Date</label>
+                <input type="date" id="startDate">
+            </div>
+            
+            <button onclick="createLoan()">Apply for Loan</button>
+            <button onclick="refreshLoans()">Refresh Loans</button>
+            
+            <hr style="margin: 30px 0;">
+            
+            <h2>Your Loans</h2>
+            <div id="loansList"></div>
+            
+            <div id="loanDetails"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const GOOGLE_SCRIPT_URL = 'YOUR_DEPLOYED_GOOGLE_SCRIPT_URL';
+        
+        class LoanPortal {
+            constructor(apiUrl) {
+                this.apiUrl = apiUrl;
+            }
+            
+            async createLoan(amount, startDate) {
+                const response = await fetch(this.apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'createLoan',
+                        amount: parseFloat(amount),
+                        startDate: startDate,
+                        rate: this.calculateRate(amount),
+                        totalPayable: this.calculateTotalPayable(amount)
+                    })
+                });
+                return await response.json();
+            }
+            
+            calculateRate(amount) {
+                if (amount <= 151000) return 0.0020;
+                if (amount <= 251000) return 0.0021;
+                if (amount <= 401000) return 0.0022;
+                if (amount <= 601000) return 0.0023;
+                if (amount <= 801000) return 0.0024;
+                if (amount <= 1001000) return 0.0025;
+                if (amount <= 1501000) return 0.0026;
+                if (amount <= 2001000) return 0.0027;
+                if (amount <= 2501000) return 0.0028;
+                return 0.0029;
+            }
+            
+            calculateTotalPayable(amount) {
+                const rate = this.calculateRate(amount);
+                return amount + (amount * rate);
+            }
+            
+            async makePayment(loanId, amount, paymentDate) {
+                const response = await fetch(this.apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'makePayment',
+                        loanId: loanId,
+                        amount: parseFloat(amount),
+                        paymentDate: paymentDate
+                    })
+                });
+                return await response.json();
+            }
+            
+            async getLoans() {
+                const response = await fetch(`${this.apiUrl}?action=getLoans`);
+                return await response.json();
+            }
+            
+            async getLoan(loanId) {
+                const response = await fetch(`${this.apiUrl}?action=getLoan&id=${loanId}`);
+                return await response.json();
+            }
+        }
+        
+        const portal = new LoanPortal(GOOGLE_SCRIPT_URL);
+        
+        async function createLoan() {
+            const amount = document.getElementById('loanAmount').value;
+            const startDate = document.getElementById('startDate').value;
+            
+            if (!amount || amount > 3000000) {
+                showAlert('Please enter a valid amount (max 3,000,000)', 'error');
+                return;
+            }
+            
+            try {
+                const result = await portal.createLoan(amount, startDate);
+                showAlert('Loan created successfully!', 'success');
+                refreshLoans();
+            } catch (error) {
+                showAlert('Error creating loan: ' + error.message, 'error');
+            }
+        }
+        
+        async function refreshLoans() {
+            try {
+                const loans = await portal.getLoans();
+                displayLoans(loans);
+            } catch (error) {
+                showAlert('Error loading loans: ' + error.message, 'error');
+            }
+        }
+        
+        function displayLoans(loans) {
+            const container = document.getElementById('loansList');
+            if (!loans || loans.length === 0) {
+                container.innerHTML = '<p>No loans found. Apply for your first loan!</p>';
+                return;
+            }
+            
+            container.innerHTML = loans.map(loan => `
+                <div class="loan-card" onclick="viewLoan('${loan.id}')">
+                    <strong>Loan #${loan.id}</strong><br>
+                    Amount: $${parseFloat(loan.amount).toLocaleString()}<br>
+                    Total Payable: $${parseFloat(loan.totalPayable).toLocaleString()}<br>
+                    Status: <span class="status-${loan.status}">${loan.status}</span><br>
+                    Started: ${new Date(loan.startDate).toLocaleDateString()}
+                </div>
+            `).join('');
+        }
+        
+        async function viewLoan(loanId) {
+            try {
+                const loan = await portal.getLoan(loanId);
+                displayLoanDetails(loan);
+            } catch (error) {
+                showAlert('Error loading loan details: ' + error.message, 'error');
+            }
+        }
+        
+        function displayLoanDetails(loan) {
+            const container = document.getElementById('loanDetails');
+            const unpaidInstalments = loan.instalments.filter(i => i.status !== 'paid');
+            const nextPayment = unpaidInstalments[0];
+            
+            container.innerHTML = `
+                <div class="loan-summary">
+                    <h3>Loan #${loan.id}</h3>
+                    <p><strong>Principal:</strong> $${parseFloat(loan.amount).toLocaleString()}</p>
+                    <p><strong>Interest Rate:</strong> ${(loan.rate * 100).toFixed(1)}%</p>
+                    <p><strong>Total Payable:</strong> $${parseFloat(loan.totalPayable).toLocaleString()}</p>
+                    <p><strong>Status:</strong> <span class="status-${loan.status}">${loan.status}</span></p>
+                    
+                    <h4>Instalments</h4>
+                    <table class="instalments-table">
+                        <thead>
+                            <tr><th>#</th><th>Due Date</th><th>Amount</th><th>Status</th><th>Paid Amount</th></tr>
+                        </thead>
+                        <tbody>
+                            ${loan.instalments.map(inst => `
+                                <tr class="${inst.status}">
+                                    <td>${inst.number}</td>
+                                    <td>${new Date(inst.dueDate).toLocaleDateString()}</td>
+                                    <td>$${inst.amount.toLocaleString()}</td>
+                                    <td>${inst.status}</td>
+                                    <td>$${inst.paidAmount.toLocaleString()}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    
+                    ${nextPayment ? `
+                        <div class="payment-form">
+                            <h4>Make a Payment</h4>
+                            <div class="form-group">
+                                <label>Next Payment Due: $${nextPayment.amount.toLocaleString()}</label>
+                                <label>Payment Amount ($)</label>
+                                <input type="number" id="paymentAmount" value="${nextPayment.amount}">
+                            </div>
+                            <div class="form-group">
+                                <label>Payment Date</label>
+                                <input type="date" id="paymentDate" value="${new Date().toISOString().split('T')[0]}">
+                            </div>
+                            <button onclick="makePayment('${loan.id}')">Submit Payment</button>
+                        </div>
+                    ` : '<div class="alert alert-success">Loan fully paid! 🎉</div>'}
+                </div>
+            `;
+        }
+        
+        async function makePayment(loanId) {
+            const amount = document.getElementById('paymentAmount').value;
+            const paymentDate = document.getElementById('paymentDate').value;
+            
+            try {
+                const result = await portal.makePayment(loanId, amount, paymentDate);
+                showAlert('Payment processed successfully!', 'success');
+                viewLoan(loanId);
+                refreshLoans();
+            } catch (error) {
+                showAlert('Error processing payment: ' + error.message, 'error');
+            }
+        }
+        
+        function showAlert(message, type) {
+            const alertDiv = document.getElementById('alert');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = message;
+            alertDiv.style.display = 'block';
+            setTimeout(() => {
+                alertDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Initialize
+        refreshLoans();
+    </script>
+</body>
+</html>

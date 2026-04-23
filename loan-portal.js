@@ -103,4 +103,4 @@ class LoanPortal {
 }
 
 // Initialize portal
-const portal = new LoanPortal('YOUR_GOOGLE_SCRIPT_URL');
+const portal = new LoanPortal('https://script.google.com/macros/s/AKfycbxW0t491SQGmhnK0d169xgRmCLgV1dZPd7w12fMsRIUHZ8pwBkAdoFOJJnMMgojIZID/execL');
